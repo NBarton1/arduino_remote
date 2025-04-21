@@ -1,8 +1,8 @@
 #include "IRremote.hpp"
 
 // pin locations
-#define YELLOW_LED_PIN 6
-#define IR_RECEIVE_PIN 5
+const byte LED[] = { 2, 3, 4, 5, 6, 7 };
+#define IR_RECEIVE_PIN 21
 
 // command numbers for my remote
 #define POWER 69
@@ -27,97 +27,125 @@
 #define EIGHT 82
 #define NINE 74
 
-bool on = HIGH;
-bool yellow_state = LOW;
+#define IR_INTERVAL 100
+#define COUNT_INTERVAL 500
+
+byte LED_COUNT = sizeof(LED) / sizeof(LED[0]);
+int mask = (1 << LED_COUNT) - 1;
+
+int count = 0;
+bool on = true;
+bool play = true;
+
+void write_LEDs() {
+  for (int i=0; i<LED_COUNT; i++)
+    digitalWrite(LED[i], on ? count & (1 << i) : LOW);
+}
+
+void c(int n) {
+  count = n & mask;
+}
 
 void setup() {
   Serial.begin(9600);
   IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK);
 
-  pinMode(YELLOW_LED_PIN, OUTPUT);
-  digitalWrite(YELLOW_LED_PIN, yellow_state & on);
+  for (int i=0; i<LED_COUNT; i++) {
+    pinMode(LED[i], OUTPUT);
+    digitalWrite(LED[i], LOW);
+  }
 }
 
 void loop() {
-  if (IrReceiver.decode() && IrReceiver.decodedIRData.flags != IRDATA_FLAGS_IS_REPEAT) {
-    uint16_t command = IrReceiver.decodedIRData.command;
+  if (IrReceiver.decode()) {
+    if (IrReceiver.decodedIRData.flags != IRDATA_FLAGS_IS_REPEAT) {
+      uint16_t command = IrReceiver.decodedIRData.command;
 
-    if (on || command == POWER) {
-      switch (command) {
-        case POWER: {
-          on = !on;
-          break;
-        }
-        case VOL_UP: {
-          break;
-        }
-        case FUNC: {
-          break;
-        }
-        case PREV: {
-          break;
-        }
-        case PLAY: {
-          yellow_state = !yellow_state;
-          digitalWrite(YELLOW_LED_PIN, yellow_state);
-          break;
-        }
-        case NEXT: {
-          break;
-        }
-        case DOWN: {
-          break;
-        }
-        case VOL_DOWN: {
-          break;
-        }
-        case UP: {
-          break;
-        }
-        case ZERO: {
-          break;
-        }
-        case EQ: {
-          break;
-        }
-        case ST_REPT: {
-          break;
-        }
-        case ONE: {
-          break;
-        }
-        case TWO: {
-          break;
-        }
-        case THREE: {
-          break;
-        }
-        case FOUR: {
-          break;
-        }
-        case FIVE: {
-          break;
-        }
-        case SIX: {
-          break;
-        }
-        case SEVEN: {
-          break;
-        }
-        case EIGHT: {
-          break;
-        }
-        case NINE: {
-          break;
-        }
-        default: {
-          Serial.print("unknown button: ");
-          Serial.println(command);
+      if (on || command == POWER) {
+        switch (command) {
+          case POWER: {
+            on = !on;
+            Serial.println(on ? "ON" : "OFF");
+            break;
+          }
+          case FUNC: {
+            break;
+          }
+          case PREV: {
+            c(count << 1);
+            break;
+          }
+          case NEXT: {
+            c(count >> 1);
+            break;
+          }
+          case PLAY: {
+            play = !play;
+            Serial.println(play ? "PLAY" : "PAUSE");
+            break;
+          }
+          case UP: {
+            break;
+          }
+          case DOWN: {
+            break;
+          }
+          case VOL_UP: {
+            break;
+          }
+          case VOL_DOWN: {
+            break;
+          }
+          case EQ: {
+            break;
+          }
+          case ST_REPT: {
+            break;
+          }
+          case ZERO: {
+            break;
+          }
+          case ONE: {
+            break;
+          }
+          case TWO: {
+            break;
+          }
+          case THREE: {
+            break;
+          }
+          case FOUR: {
+            break;
+          }
+          case FIVE: {
+            break;
+          }
+          case SIX: {
+            break;
+          }
+          case SEVEN: {
+            break;
+          }
+          case EIGHT: {
+            break;
+          }
+          case NINE: {
+            break;
+          }
+          default: {
+            Serial.print("unknown button: ");
+            Serial.println(command);
+          }
         }
       }
     }
-    
-    delay(100);
+
     IrReceiver.resume();
+    delay(IR_INTERVAL);
+  } else if (on && play) {
+    c(count+1);
+    delay(COUNT_INTERVAL);
   }
+
+  write_LEDs();
 }
